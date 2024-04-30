@@ -1,9 +1,9 @@
-(ns compliment.sources.classes
+(ns deps-try.compliment.sources.classes
   "Completion for class names."
-  (:require [compliment.sources :refer [defsource]]
-            [compliment.utils :refer [fuzzy-matches?] :as utils]
-            [compliment.sources.class-members :refer [classname-doc]]
-            [compliment.sources.namespaces :refer [nscl-symbol? nscl-matches?]])
+  (:require [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.utils :refer [fuzzy-matches?] :as utils]
+            [deps-try.compliment.sources.class-members :refer [classname-doc]]
+            [deps-try.compliment.sources.namespaces :refer [nscl-symbol? nscl-matches?]])
   (:import java.util.HashSet))
 
 (defn- all-classes-short-names

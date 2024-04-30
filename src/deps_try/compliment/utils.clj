@@ -1,4 +1,4 @@
-(ns compliment.utils
+(ns deps-try.compliment.utils
   "Functions and utilities for source implementations."
   (:import java.io.File
            java.nio.file.Files

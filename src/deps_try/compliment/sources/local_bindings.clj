@@ -1,8 +1,8 @@
-(ns compliment.sources.local-bindings
+(ns deps-try.compliment.sources.local-bindings
   "Completion source for local bindings introduced by defn, let and the like."
-  (:require [compliment.sources :refer [defsource]]
-            [compliment.sources.vars :refer [var-symbol? dash-matches?]]
-            [compliment.utils :as utils]))
+  (:require [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.sources.vars :refer [var-symbol? dash-matches?]]
+            [deps-try.compliment.utils :as utils]))
 
 (defn- let-like-form? [x]
   (and (symbol? x)

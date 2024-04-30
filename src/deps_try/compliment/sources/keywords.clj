@@ -1,7 +1,7 @@
-(ns compliment.sources.keywords
+(ns deps-try.compliment.sources.keywords
   "Completion for keywords interned globally across the application"
-  (:require [compliment.sources :refer [defsource]]
-            [compliment.utils :refer [resolve-namespace]])
+  (:require [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.utils :refer [resolve-namespace]])
   (:import java.lang.reflect.Field))
 
 (def ^:private keywords-table

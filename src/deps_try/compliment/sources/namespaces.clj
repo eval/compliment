@@ -1,7 +1,7 @@
-(ns compliment.sources.namespaces
+(ns deps-try.compliment.sources.namespaces
   "Completion for namespaces."
-  (:require [compliment.sources :refer [defsource]]
-            [compliment.utils :refer [fuzzy-matches?] :as utils]))
+  (:require [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.utils :refer [fuzzy-matches?] :as utils]))
 
 (defn nscl-symbol?
   "Tests if prefix looks like a namespace or classname."

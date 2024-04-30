@@ -1,10 +1,10 @@
-(ns compliment.sources.class-members
+(ns deps-try.compliment.sources.class-members
   "Completion for both static and non-static class members."
   (:require [clojure.string :refer [join]]
-            [compliment.sources :refer [defsource]]
-            [compliment.sources.local-bindings :refer [bindings-from-context]]
-            [compliment.utils :as utils :refer [fuzzy-matches-no-skip?
-                                                resolve-class]])
+            [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.sources.local-bindings :refer [bindings-from-context]]
+            [deps-try.compliment.utils :as utils :refer [fuzzy-matches-no-skip?
+                                                         resolve-class]])
   (:import [java.lang.reflect Field Member Method Modifier Constructor Executable]))
 
 (defn static?

@@ -1,8 +1,8 @@
-(ns compliment.sources.resources
+(ns deps-try.compliment.sources.resources
   "Completion for bundled resource files."
   (:require [clojure.java.io :as io]
-            [compliment.sources :refer [defsource]]
-            [compliment.utils :as utils])
+            [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.utils :as utils])
   (:import java.io.File
            java.net.URLConnection))
 

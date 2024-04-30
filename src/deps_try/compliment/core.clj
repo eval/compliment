@@ -3,20 +3,20 @@
 ;; editor. It is intended to be maximally editor-agnostic where
 ;; possible, to avoid duplicating implementation in different clients.
 
-(ns compliment.core
+(ns deps-try.compliment.core
   "Core namespace. Most interactions with Compliment should happen
   through functions defined here."
-  (:require (compliment.sources vars
-                                namespaces
-                                classes
-                                class-members
-                                keywords
-                                special-forms
-                                local-bindings
-                                resources)
-            [compliment.sources :refer [all-sources]]
-            [compliment.context :refer [cache-context]]
-            [compliment.utils :refer [*extra-metadata*]]
+  (:require (deps-try.compliment.sources vars
+                                         namespaces
+                                         classes
+                                         class-members
+                                         keywords
+                                         special-forms
+                                         local-bindings
+                                         resources)
+            [deps-try.compliment.sources :refer [all-sources]]
+            [deps-try.compliment.context :refer [cache-context]]
+            [deps-try.compliment.utils :refer [*extra-metadata*]]
             [clojure.string :refer [join]])
   (:import java.util.Comparator))
 

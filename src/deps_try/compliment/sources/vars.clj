@@ -1,8 +1,8 @@
-(ns compliment.sources.vars
+(ns deps-try.compliment.sources.vars
   "Completion for vars and classes in the current namespace."
-  (:require [compliment.sources :refer [defsource]]
-            [compliment.utils :refer [fuzzy-matches? resolve-namespace
-                                      *extra-metadata* split-by-leading-literals]])
+  (:require [deps-try.compliment.sources :refer [defsource]]
+            [deps-try.compliment.utils :refer [fuzzy-matches? resolve-namespace
+                                               *extra-metadata* split-by-leading-literals]])
   (:import java.io.StringWriter))
 
 (defn var-symbol?

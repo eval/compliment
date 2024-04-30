@@ -1,4 +1,4 @@
-(ns compliment.sources
+(ns deps-try.compliment.sources
   "Tools for defining sources for the completion.")
 
 (def ^:private sources "Stores defined sources." (atom {}))

@@ -1,4 +1,4 @@
-(ns compliment.context
+(ns deps-try.compliment.context
   "Utilities for parsing and storing the current completion context."
   (:require [clojure.string :as str]
             [clojure.walk :as walk]))
