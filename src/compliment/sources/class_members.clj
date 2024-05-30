@@ -5,12 +5,17 @@
             [compliment.sources.local-bindings :refer [bindings-from-context]]
             [compliment.utils :as utils :refer [fuzzy-matches-no-skip?
                                                 resolve-class]])
-  (:import [java.lang.reflect Field Member Method Modifier]))
+  (:import [java.lang.reflect Field Member Method Modifier Constructor]))
 
 (defn static?
   "Tests if class member is static."
   [^Member member]
   (Modifier/isStatic (.getModifiers member)))
+
+(defn constructor?
+  "Tests if member is constructor."
+  [^Member member]
+  (instance? Constructor member))
 
 ;; ## Regular (non-static) members
 
@@ -222,10 +227,12 @@
   [^Class class]
   (swap! static-members-cache assoc class
          (reduce (fn [cache ^Member c]
-                   (if (static? c)
-                     (update cache (.getName c) (fnil conj []) c)
+                   (if-let [cache-name (cond
+                                         (constructor? c) "new"
+                                         (static? c) (.getName c))]
+                     (update cache cache-name (fnil conj []) c)
                      cache))
-                 {} (concat (.getMethods class) (.getFields class)))))
+                 {} (concat (.getMethods class) (.getFields class) (.getConstructors class)))))
 
 (defn static-members
   "Returns all static members for a given class."
@@ -239,13 +246,15 @@
   (when-let [[_ cl-name member-prefix] (static-member-symbol? prefix)]
     (when-let [cl (resolve-class ns (symbol cl-name))]
       (let [inparts? (re-find #"[A-Z]" member-prefix)]
-        (for [[^String member-name members] (static-members cl)
+        (for [[^String member-name [member]] (static-members cl)
               :when (if inparts?
                       (camel-case-matches? member-prefix member-name)
                       (.startsWith member-name member-prefix))]
           {:candidate (str cl-name "/" member-name)
-           :type (if (instance? Method (first members))
-                   :static-method :static-field)})))))
+           :type (cond
+                   (constructor? member) :constructor
+                   (instance? Method member) :static-method
+                   :else :static-field)})))))
 
 ^{:lite nil}
 (defn resolve-static-member
