@@ -223,31 +223,40 @@
   [x]
   (re-matches #"([^\/\:\.][^\:]*)\/(.*)" x))
 
-(def static-members-cache
-  "Stores cache of all static members for every class."
+(def ^:private class-members-cache
+  "Members by class"
   (atom {}))
 
-(defn populate-static-members-cache
-  "Populates static members cache for a given class."
+(defn- populate-class-members-cache
+  "Populates qualified methods cache for a given class."
   [^Class class]
-  (swap! static-members-cache assoc class
-         (reduce (fn [cache ^Member c]
-                   (if-let [cache-name (cond
-                                         (constructor? c) "new"
-                                         (static? c) (.getName c))]
-                     (update cache cache-name (fnil conj []) c)
-                     cache))
-                 {} (concat (.getMethods class) (.getFields class) (.getConstructors class)))))
+  (let [member->cache-key #(get {:constructor "new"} %2 (.getName ^Member %1))
+        methods-by-type   (group-by (comp {true :static-method false :method} static?)
+                                    (.getMethods class))
+        members-by-type   (merge methods-by-type
+                                 {:static-field (.getFields class)
+                                  :constructor  (.getConstructors class)})]
+    (swap! class-members-cache assoc class
+           (reduce (fn [cache [type members]]
+                     (reduce
+                      (fn [acc ^Member m]
+                        (update acc (member->cache-key m type) (fnil conj (with-meta [] {:type type})) m))
+                      cache members))
+                   {}
+                   members-by-type))))
 
 (defn static-members
   "Returns all static members for a given class."
   [^Class class]
-  (or (@static-members-cache class)
-      (get (populate-static-members-cache class) class)))
+  (let [class-members (or (@class-members-cache class)
+                          (get (populate-class-members-cache class) class))]
+    (->> class-members
+         (filter (comp #{:static-field :static-method :constructor} :type meta val))
+         (into {}))))
 
 (defn static-members-candidates
   "Returns a list of static member candidates."
-  [^String prefix, ns context]
+  [^String prefix, ns _context]
   (when-let [[_ cl-name member-prefix] (static-member-symbol? prefix)]
     (when-let [cl (resolve-class ns (symbol cl-name))]
       (let [inparts? (re-find #"[A-Z]" member-prefix)]
