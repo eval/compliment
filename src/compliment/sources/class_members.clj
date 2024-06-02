@@ -87,7 +87,7 @@
 (defn class-member-symbol?
   "Tests if a symbol name looks like a non-static class member."
   [^String x]
-  (.startsWith x "."))
+  (re-matches #"(?:([^\/\:\.][^\:]*)/)?\.(.*)" x))
 
 (defn camel-case-matches?
   "Tests if prefix matches the member name following camel case rules.
@@ -119,11 +119,15 @@
 (defn members-candidates
   "Returns a list of Java non-static fields and methods candidates."
   [prefix ns context]
-  (when (class-member-symbol? prefix)
-    (let [prefix (subs prefix 1)
-          inparts? (re-find #"[A-Z]" prefix)
-          klass ^{:lite nil} (try-get-object-class ns context)]
-      (for [[member-name members] (get-all-members ns klass)
+  (when-let [[_ klass-name prefix] (class-member-symbol? prefix)]
+    (let [qualified?  (seq klass-name)
+          inparts?    (re-find #"[A-Z]" prefix)
+          klass       ^{:lite nil} (if qualified?
+                                     (resolve-class ns (symbol klass-name))
+                                     (try-get-object-class ns context))
+          all-members (when-not (and qualified? (not klass))
+                        (get-all-members ns klass))]
+      (for [[member-name members] all-members
             :when (and (if inparts?
                          (camel-case-matches? prefix member-name)
                          (.startsWith ^String member-name prefix))
@@ -131,7 +135,8 @@
                        (or (not klass)
                            (some (fn [m] (.isAssignableFrom (.getDeclaringClass ^Member m) klass))
                                  members)))]
-        {:candidate (str "." member-name)
+        {:candidate (cond->> (str "." member-name)
+                      (and qualified? klass) (str klass-name "/"))
          :type (if (instance? Method (first members))
                  :method :field)}))))
 
