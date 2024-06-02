@@ -85,7 +85,7 @@
   (get-in @members-cache [ns :members]))
 
 (defn class-member-symbol?
-  "Tests if a symbol name looks like a non-static class member."
+  "Tests if `x` looks like a non-static class member."
   [^String x]
   (re-matches #"(?:([^\/\:\.][^\:]*)/)?\.(.*)" x))
 
@@ -193,7 +193,7 @@
   (let [^Member f-mem (first members)]
     (str (.getName cl) "." (.getName f-mem)
          (str " = " (try (.get ^Field f-mem nil)
-                         (catch Exception e "?"))
+                         (catch Exception _e "?"))
               " (" (type-to-pretty-string (.getType ^Field f-mem)) ")\n"
               (Modifier/toString (.getModifiers f-mem)))
          "\n")))
@@ -212,14 +212,27 @@
          (interpose "\n")
          join)))
 
+(declare non-static-members)
+(defn- qualified-member-doc [ns klass-name member-name]
+  (some-> (symbol klass-name)
+          (->> (resolve-class ns))
+          (non-static-members)
+          (get member-name)
+          create-members-doc))
+
+(defn- non-qualified-member-doc [ns member-name]
+  (update-cache ns)
+  (when-let [members (get-in @members-cache [ns :members member-name])]
+    (create-members-doc members)))
+
 ^{:lite nil}
 (defn members-doc
   "Documentation function for non-static members."
   [member-str ns]
-  (when (class-member-symbol? member-str)
-    (update-cache ns)
-    (when-let [member (get-in @members-cache [ns :members (subs member-str 1)])]
-      (create-members-doc member))))
+  (when-let [[_ klass-name member-name] (class-member-symbol? member-str)]
+    (if (seq klass-name)
+      (qualified-member-doc ns klass-name member-name)
+      (non-qualified-member-doc ns member-name))))
 
 ^{:lite nil}
 (defn classname-doc [^Class class]
@@ -276,6 +289,15 @@
                           (get (populate-class-members-cache class) class))]
     (->> class-members
          (filter (comp #{:static-field :static-method :constructor} :type meta val))
+         (into {}))))
+
+(defn non-static-members
+  "Returns all non-static members for a given class."
+  [^Class class]
+  (let [class-members (or (@class-members-cache class)
+                          (get (populate-class-members-cache class) class))]
+    (->> class-members
+         (filter (comp #{:method} :type meta val))
          (into {}))))
 
 (defn static-members-candidates
