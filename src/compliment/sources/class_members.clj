@@ -5,7 +5,7 @@
             [compliment.sources.local-bindings :refer [bindings-from-context]]
             [compliment.utils :as utils :refer [fuzzy-matches-no-skip?
                                                 resolve-class]])
-  (:import [java.lang.reflect Field Member Method Modifier Constructor]))
+  (:import [java.lang.reflect Field Member Method Modifier Constructor Executable]))
 
 (defn static?
   "Tests if class member is static."
@@ -162,31 +162,55 @@
        join
        (format "(%s)")))
 
+(defn- class&members->doc-dispatch [[^Class _cl members]]
+  (class (first members)))
+
+(defmulti ^:private class&members->doc #'class&members->doc-dispatch)
+
+(defmethod class&members->doc java.lang.reflect.Method
+  [[^Class cl members]]
+  (let [^Member f-mem (first members)]
+    (str (.getName cl) "." (.getName f-mem)
+         (join
+          (map (fn [^Method member]
+                 (str "\n  " (doc-method-parameters (.getParameterTypes member))
+                      " -> " (type-to-pretty-string (.getReturnType ^Method member))
+                      " (" (Modifier/toString (.getModifiers member)) ")"))
+               members))
+         "\n")))
+
+(defmethod class&members->doc java.lang.reflect.Constructor
+  [[^Class cl members]]
+  (str (.getName cl) ".new"
+       (join
+        (map (fn [^Constructor member]
+               (str "\n  " (doc-method-parameters (.getParameterTypes member))))
+             members))
+       "\n"))
+
+(defmethod class&members->doc java.lang.reflect.Field
+  [[^Class cl members]]
+  (let [^Member f-mem (first members)]
+    (str (.getName cl) "." (.getName f-mem)
+         (str " = " (try (.get ^Field f-mem nil)
+                         (catch Exception e "?"))
+              " (" (type-to-pretty-string (.getType ^Field f-mem)) ")\n"
+              (Modifier/toString (.getModifiers f-mem)))
+         "\n")))
+
 ^{:lite nil}
 (defn create-members-doc
   "Takes a list of members (presumably with the same name) and turns
   them into a docstring."
   [members]
-  (->> members
-       (group-by (fn [^Member m] (.getDeclaringClass m)))
-       (map (fn [[^Class class, members]]
-              (let [^Member f-mem (first members)]
-                (str (.getName class) "." (.getName f-mem)
-                     (if (instance? Field f-mem)
-                       (str " = " (try (.get ^Field f-mem nil)
-                                       (catch Exception e "?"))
-                            " (" (type-to-pretty-string (.getType ^Field f-mem)) ")\n"
-                            (Modifier/toString (.getModifiers f-mem)))
-                       (join
-                        (map (fn [^Method member]
-                               (when (instance? Method member)
-                                 (str "\n  " (doc-method-parameters (.getParameterTypes member))
-                                      " -> " (type-to-pretty-string (.getReturnType ^Method member))
-                                      " (" (Modifier/toString (.getModifiers member)) ")")))
-                             (distinct members))))
-                     "\n"))))
-       (interpose "\n")
-       join))
+  (let [sort-members (fn [[^Class cl members]]
+                       [cl (sort-by #(.getParameterCount ^Executable %)
+                                    (distinct members))])]
+    (->> members
+         (group-by (fn [^Member m] (.getDeclaringClass m)))
+         (map (comp class&members->doc sort-members))
+         (interpose "\n")
+         join)))
 
 ^{:lite nil}
 (defn members-doc
