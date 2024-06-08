@@ -4,7 +4,8 @@
             [compliment.sources :refer [defsource]]
             [compliment.sources.local-bindings :refer [bindings-from-context]]
             [compliment.utils :as utils :refer [fuzzy-matches-no-skip?
-                                                resolve-class]])
+                                                resolve-class
+                                                clojure-1-12+?]])
   (:import [java.lang.reflect Field Member Method Modifier Constructor Executable]))
 
 (defn static?
@@ -13,7 +14,7 @@
   (Modifier/isStatic (.getModifiers member)))
 
 (defn constructor?
-  "Tests if member is constructor."
+  "Tests if member is a constructor."
   [^Member member]
   (instance? Constructor member))
 
@@ -85,9 +86,24 @@
   (get-in @members-cache [ns :members]))
 
 (defn class-member-symbol?
-  "Tests if `x` looks like a non-static class member."
-  [^String x]
-  (re-matches #"(?:([^\/\:\.][^\:]*)/)?\.(.*)" x))
+  "Tests if `x` looks like a non-static class member,
+  e.g. \".getMonth\" or (with `clj-1-12+` option set) \"java.util.Date/.getMonth\".
+
+  When true, yields `[klass-name method-name]`."
+  ([x] (class-member-symbol? x nil))
+  ([^String x {:keys [clj-1-12+]}]
+   (when-let [[_ klass-name member-name]
+              (re-matches #"(?x)
+                            (?=.)  # at least one character
+                            (?:    # optional 'a.b/'
+                              ([^\/\:\.][^\:]*) # capture 'a.b'
+                              (?<!\.)  # deny 'a.b./'
+                              \/)?
+                            (?:    # optional '.method'
+                              \.([^.]*))?  # capture 'method'"
+                          x)]
+     (when (or clj-1-12+ (nil? klass-name))
+       [klass-name member-name]))))
 
 (defn camel-case-matches?
   "Tests if prefix matches the member name following camel case rules.
@@ -119,8 +135,9 @@
 (defn members-candidates
   "Returns a list of Java non-static fields and methods candidates."
   [prefix ns context]
-  (when-let [[_ klass-name prefix] (class-member-symbol? prefix)]
-    (let [qualified?  (seq klass-name)
+  (when-let [[klass-name prefix] (class-member-symbol? prefix {:clj-1-12+ (clojure-1-12+?)})]
+    (let [prefix      (or prefix "")
+          qualified?  (seq klass-name)
           inparts?    (re-find #"[A-Z]" prefix)
           klass       ^{:lite nil} (if qualified?
                                      (resolve-class ns (symbol klass-name))
@@ -229,7 +246,8 @@
 (defn members-doc
   "Documentation function for non-static members."
   [member-str ns]
-  (when-let [[_ klass-name member-name] (class-member-symbol? member-str)]
+  (when-let [[klass-name member-name]
+             (class-member-symbol? member-str {:clj-1-12+ (clojure-1-12+?)})]
     (if (seq klass-name)
       (qualified-member-doc ns klass-name member-name)
       (non-qualified-member-doc ns member-name))))
@@ -256,8 +274,8 @@
 ;; ## Static members
 
 (defn static-member-symbol?
-  "Tests if prefix looks like a static member symbol, returns parsed parts."
-  [x]
+  "Tests if `x` looks like a static member symbol, returns parsed parts."
+  [^String x]
   (re-matches #"([^\/\:\.][^\:]*)\/(.*)" x))
 
 (def ^:private class-members-cache
@@ -285,10 +303,12 @@
 (defn static-members
   "Returns all static members for a given class."
   [^Class class]
-  (let [class-members (or (@class-members-cache class)
-                          (get (populate-class-members-cache class) class))]
+  (let [class-members  (or (@class-members-cache class)
+                           (get (populate-class-members-cache class) class))
+        matching-types (cond-> #{:static-field :static-method}
+                         (clojure-1-12+?) (conj :constructor))]
     (->> class-members
-         (filter (comp #{:static-field :static-method :constructor} :type meta val))
+         (filter (comp matching-types :type meta val))
          (into {}))))
 
 (defn non-static-members
